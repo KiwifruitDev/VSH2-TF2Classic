@@ -716,7 +716,7 @@ public SMCResult ConfigMap_OnEndSection(SMCParser smc)
 		PackVal val;
 		val.data = new DataPack();
 		val.data.WriteCell(g_kvstate.top);
-		val.size = sizeof(g_kvstate.top);
+		val.size = g_kvstate.top.Size;
 		val.tag = KeyValType_Section;
 		
 		if( StrEqual(g_kvstate.curr_section, "<ENUM>") ) {
