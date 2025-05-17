@@ -305,41 +305,47 @@ methodmap BaseFighter {
 	/**
 	 * creates and spawns a weapon to a player, regardless if boss or not
 	 *
-	 * @param name      entity name of the weapon, example: "tf_weapon_bat"
-	 * @param index     the index of the desired weapon
-	 * @param level     the level of the weapon
-	 * @param qual      the weapon quality of the item
-	 * @param att       the nested attribute string, example: "2; 2.0" - increases weapon damage by 100% aka 2x.
-	 * @return          entity index of the newly created weapon
+	 * @param index     the index of the desired weapon as seen in items_game.txt
+	 * @noreturn
 	 */
-	public int SpawnWeapon(char[] name, const int index, const int level, const int qual, char[] att)
+	public void SpawnWeapon(const int index)
 	{
-		TF2Item hWep = new TF2Item(OVERRIDE_ALL|FORCE_GENERATION);
-		if( !hWep ) {
-			return -1;
-		}
-		hWep.SetClassname(name);
-		hWep.iItemIndex = index;
-		hWep.iLevel = level;
-		hWep.iQuality = qual;
-		char atts[32][32];
-		int count = ExplodeString(att, "; ", atts, 32, 32);
-
-		/// odd numbered attributes result in an error, remove the 1st bit so count will always be even.
-		count &= ~1;
-		if( count > 0 ) {
-			hWep.iNumAttribs = count / 2;
-			for( int i, att_index; i<count; i+=2, att_index++ ) {
-				hWep.SetAttribute(att_index, StringToInt(atts[i]), StringToFloat(atts[i+1]));
+		// create tf_player_equip entity if it doesn't exist
+		int equipper = FindEntityByClassname(-1, "tf_player_equip");
+		if( equipper == -1 ) {
+			equipper = CreateEntityByName("tf_player_equip");
+			if( equipper != -1 ) {
+				DispatchSpawn(equipper);
 			}
-		} else {
-			hWep.iNumAttribs = 0;
 		}
+		
+		// welp, we tried
+		if( equipper == -1 )
+		{
+			LogError("SpawnWeapon: Could not find or create tf_player_equip entity");
+			return;
+		}
+		
+		LogMessage("Creating weapon %d for player %d (tf_player_equip %d)", index, this.index, equipper);
 
-		int entity = hWep.GiveNamedItem(this.index);
-		delete hWep;
-		EquipPlayerWeapon(this.index, entity);
-		return entity;
+		// input index
+		SetVariantInt(index);
+		AcceptEntityInput(equipper, "SetWeapon1");
+		SetVariantInt(index);
+		AcceptEntityInput(equipper, "SetWeapon2");
+		SetVariantInt(index);
+		AcceptEntityInput(equipper, "SetWeapon3");
+
+		// now input Equip with our player index as the activator
+		AcceptEntityInput(equipper, "Equip", this.index);
+
+		// reset to -1 (weapons get equipped on spawn for some reason)
+		SetVariantInt(-1);
+		AcceptEntityInput(equipper, "SetWeapon1");
+		SetVariantInt(-1);
+		AcceptEntityInput(equipper, "SetWeapon2");
+		SetVariantInt(-1);
+		AcceptEntityInput(equipper, "SetWeapon3");
 	}
 
 	/**
@@ -381,10 +387,6 @@ methodmap BaseFighter {
 	 */
 	public void setCliptable(const int wepslot, const int val) {
 		g_munitions[this.index].SetClip(wepslot, val);
-	}
-	public int GetWeaponSlotIndex(const int slot) {
-		int weapon = GetPlayerWeaponSlot(this.index, slot);
-		return GetItemIndex(weapon);
 	}
 	public void SetWepInvis(const int alpha) {
 		int transparent = alpha;
@@ -445,20 +447,6 @@ methodmap BaseFighter {
 		return true;
 	}
 
-	public void IncreaseHeadCount(bool addhealth=true, int head_count=1) {
-		int client = this.index;
-		/// Apply this condition to Demomen to give them their glowing eye effect.
-		if( (this.iTFClass == TFClass_DemoMan) && !TF2_IsPlayerInCondition(client, TFCond_DemoBuff) ) {
-			TF2_AddCondition(client, TFCond_DemoBuff, TFCondDuration_Infinite);
-		}
-		int decapitations = GetEntProp(client, Prop_Send, "m_iDecapitations");
-		SetEntProp(client, Prop_Send, "m_iDecapitations", decapitations + head_count);
-		if( addhealth && GetClientHealth(client) < g_vsh2.m_hCvars.MaxDemoKnightOverheal.IntValue ) {
-			HealPlayer(client, g_vsh2.m_hCvars.SwordHeadHPAdd.IntValue * head_count, true, true, g_vsh2.m_hCvars.MaxDemoKnightOverheal.IntValue);
-		}
-		/// recalc their speed
-		TF2_AddCondition(client, TFCond_SpeedBuffAlly, 0.01);
-	}
 	public void SpawnSmallHealthPack(int ownerteam=0) {
 		if( !IsValidClient(this.index) || !IsPlayerAlive(this.index) )
 			return;
@@ -555,7 +543,8 @@ methodmap BaseFighter {
 			"help.heavy",
 			"help.pyro",
 			"help.spy",
-			"help.engie"
+			"help.engie",
+			"help.civilian",
 		};
 
 		Panel panel = new Panel();
@@ -577,12 +566,6 @@ methodmap BaseFighter {
 	}
 	public bool IsInRange(const int target, const float dist, bool pTrace=false) {
 		return IsInRange(this.index, target, dist, pTrace);
-	}
-	public void RemoveBack(int[] indices, const int len) {
-		RemovePlayerBack(this.index, indices, len);
-	}
-	public int FindBack(int[] indices, const int len) {
-		return FindPlayerBack(this.index, indices, len);
 	}
 	public int ShootRocket(bool bCrit=false, float vPosition[3], float vAngles[3], const float flSpeed, const float dmg, const char[] model, bool arc=false) {
 		return ShootRocket(this.index, bCrit, vPosition, vAngles, flSpeed, dmg, model, arc);
@@ -625,20 +608,6 @@ methodmap BaseFighter {
 		} else {
 			StopSound(this.index, SNDCHAN_AUTO, g_vsh2.m_strCurrSong);
 		}
-	}
-
-	public bool AddTempAttrib(const int attrib, const float val, const float dur=-1.0) {
-		bool res;
-#if defined _tf2attributes_included
-		bool tf2attribs; view_as< StringMap >(g_vshgm).GetValue("bTF2Attribs", tf2attribs);
-		if( tf2attribs ) {
-			res = TF2Attrib_SetByDefIndex(this.index, attrib, val);
-			if( res && dur > -1.0 ) {
-				SetPawnTimer(TF2AttribsRemove, dur, this.userid, attrib);
-			}
-		}
-#endif
-		return res;
 	}
 };
 
@@ -812,20 +781,59 @@ methodmap BaseBoss < BaseFighter {
 			this.ForceTeamChange(VSH2Team_Boss);
 	}
 
+	public void StunPlayer(int target, float stun_time=5.0, float move_speed_reduction=0.5)
+	{
+		if( !IsValidClient(target) || !IsPlayerAlive(target) || target==this.index || GetClientTeam(target)==GetClientTeam(this.index) ) {
+			return;
+		}
+		if( !TF2_IsPlayerInCondition(target, TFCond_Ubercharged) ) {
+			//CreateTimer(stun_time, RemoveEnt, EntIndexToEntRef(AttachParticle(target, "yikes_fx", 75.0)));
+			// teleport _vsh_trigger_stun_{client slot} at the target's position and enable it
+			float pos[3];
+			GetEntPropVector(target, Prop_Send, "m_vecOrigin", pos);
+			/*
+			char triggername[64];
+			Format(triggername, sizeof(triggername), "_vsh_trigger_stun_%d", target);
+			LogMessage("Trigger name: %s", triggername);
+			int trigger = -1;
+			while(true) {
+				trigger = FindEntityByClassname(trigger, "trigger_stun");
+				if( trigger == -1 )
+					continue;
+				char foundname[64];
+				GetEntPropString(trigger, Prop_Data, "m_iName", foundname, sizeof(foundname));
+				if( StrEqual(foundname, triggername) )
+					break;
+			}
+			*/
+			int trigger = g_vsh2.m_iStunTriggers[1];
+			if(trigger > 0 && IsValidEntity(trigger)) {
+				LogMessage("Found stun trigger %d for player %d", trigger, target);
+				DispatchKeyValueFloat(trigger, "stun_duration", stun_time);
+				LogMessage("Set trigger stun duration %f", stun_time);
+				TeleportEntity(trigger, pos, NULL_VECTOR, NULL_VECTOR);
+				LogMessage("Teleported trigger %d to %f %f %f", trigger, pos[0], pos[1], pos[2]);
+				CreateTimer(stun_time/4, TeleportEntAway, EntIndexToEntRef(trigger));
+			} else {
+				LogError("StunPlayers: Could not find or create stun trigger for player %d", this.index);
+			}
+		}
+	}
+
 	public void StunPlayers(float rage_dist, float stun_time=5.0)
 	{
-		float boss_pos[3], player_pos[3];
-		GetEntPropVector(this.index, Prop_Send, "m_vecOrigin", boss_pos);
-		for( int i=MaxClients; i; --i ) {
-			if( !IsValidClient(i) || !IsPlayerAlive(i) || i==this.index || GetClientTeam(i)==GetClientTeam(this.index) ) {
-				continue;
-			}
-			GetEntPropVector(i, Prop_Send, "m_vecOrigin", player_pos);
-			float distance = GetVectorDistance(boss_pos, player_pos);
-			if( !TF2_IsPlayerInCondition(i, TFCond_Ubercharged) && distance < rage_dist ) {
-				CreateTimer(stun_time, RemoveEnt, EntIndexToEntRef(AttachParticle(i, "yikes_fx", 75.0)));
-				TF2_StunPlayer(i, stun_time, _, TF_STUNFLAGS_GHOSTSCARE|TF_STUNFLAG_NOSOUNDOREFFECT, this.index);
-			}
+		float pos[3];
+		GetEntPropVector(this.index, Prop_Send, "m_vecOrigin", pos);
+		int trigger = g_vsh2.m_iStunTriggers[0];
+		if(trigger > 0 && IsValidEntity(trigger)) {
+			LogMessage("Found stun trigger %d for player %d", trigger, this.index);
+			DispatchKeyValueFloat(trigger, "stun_duration", stun_time);
+			LogMessage("Set trigger stun duration %f", stun_time);
+			TeleportEntity(trigger, pos, NULL_VECTOR, NULL_VECTOR);
+			LogMessage("Teleported trigger %d to %f %f %f", trigger, pos[0], pos[1], pos[2]);
+			CreateTimer(stun_time/4, TeleportEntAway, EntIndexToEntRef(trigger));
+		} else {
+			LogError("StunPlayers: Could not find or create stun trigger for player %d", this.index);
 		}
 	}
 
@@ -875,21 +883,6 @@ methodmap BaseBoss < BaseFighter {
 	public void RemoveAllItems(bool weps=true) {
 		int client = this.index;
 		TF2_RemovePlayerDisguise(client);
-
-		int ent = -1;
-		while( (ent = FindEntityByClassname(ent, "tf_wearabl*")) != -1 ) {
-			if( GetOwner(ent)==client ) {
-				TF2_RemoveWearable(client, ent);
-				AcceptEntityInput(ent, "Kill");
-			}
-		}
-		ent = -1;
-		while( (ent = FindEntityByClassname(ent, "tf_powerup_bottle")) != -1 ) {
-			if( GetOwner(ent)==client ) {
-				TF2_RemoveWearable(client, ent);
-				AcceptEntityInput(ent, "Kill");
-			}
-		}
 		if( weps ) {
 			TF2_RemoveAllWeapons(client);
 		}
@@ -1021,18 +1014,4 @@ public void SetGravityNormal(const BaseBoss b)
 	if( IsClientValid(i) ) {
 		SetEntityGravity(i, 1.0);
 	}
-}
-
-public void TF2AttribsRemoveAll(const int ent)
-{
-#if defined _tf2attributes_included
-	TF2Attrib_RemoveAll(ent);
-#endif
-}
-
-public void TF2AttribsRemove(const int userid, const int attrib)
-{
-#if defined _tf2attributes_included
-	TF2Attrib_RemoveByDefIndex(GetClientOfUserId(userid), attrib);
-#endif
 }

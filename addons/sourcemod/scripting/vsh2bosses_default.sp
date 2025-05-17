@@ -1,6 +1,6 @@
 #include <sourcemod>
 #include <sdktools>
-#include <tf2_stocks>
+#include <tf2c>
 #include <vsh2>
 #include <cfgmap>
 
@@ -361,30 +361,22 @@ public void DefaultBosses_OnEquip(VSH2Player player) {
 	player.SetName(name);
 	player.RemoveAllItems();
 	
-	int attribs_len = g_defbosses.m_hBossCfgs[id].GetSize("boss data.attribs") + 64;
-	char[] attribs = new char[attribs_len];
-	g_defbosses.m_hBossCfgs[id].Get("boss data.attribs", attribs, attribs_len);
-	
-	int wep;
 	switch( id ) {
 		case VSH2Boss_Hale: {
-			Format(attribs, attribs_len, "%s; 214 ; %i", attribs, GetRandomInt(9999, 99999));
-			wep = player.SpawnWeapon("tf_weapon_shovel", 5, 100, 5, attribs);
+			player.SpawnWeapon(BossWeapon_SaxtonHale_Fists);
 		}
 		case VSH2Boss_Vagineer:
-			wep = player.SpawnWeapon("tf_weapon_wrench", 169, 100, 5, attribs);
+			player.SpawnWeapon(BossWeapon_Vagineer_Wrench);
 		case VSH2Boss_CBS:
-			wep = player.SpawnWeapon("tf_weapon_club", 171, 100, 5, attribs);
+			player.SpawnWeapon(BossWeapon_ChristianBrutalSniper_Kukri);
 		case VSH2Boss_HHHjr: {
-			wep = player.SpawnWeapon("tf_weapon_sword", 266, 100, 5, attribs);
+			player.SpawnWeapon(BossWeapon_HorselessHeadlessHorsemannJr_Kukri);
 			/// TODO: add config key-value for starting percentage?
 			player.SetPropFloat("flCharge", g_vsh2_cvars.hhh_tele_cooldown.FloatValue * 0.9091);
 		}
 		case VSH2Boss_Bunny:
-			wep = player.SpawnWeapon("tf_weapon_bottle", 609, 100, 5, attribs);
+			player.SpawnWeapon(BossWeapon_EasterBunny_Bottle);
 	}
-	if( wep != 0 )
-		SetEntPropEnt(player.index, Prop_Send, "m_hActiveWeapon", wep);
 }
 
 public void DefaultBosses_OnInit(VSH2Player player) {
@@ -652,8 +644,8 @@ public Action DefaultBosses_OnVoice(const VSH2Player player, char sample[PLATFOR
 				if( StrContains(sample, "engineer_moveup", false) != -1 )
 					Format(sample, PLATFORM_MAX_PATH, "%s%i.wav", VagineerJump, GetRandomInt(1, 2));
 				else if( StrContains(sample, "engineer_no", false) != -1 || GetRandomInt(0, 9) > 6 )
-					strcopy(sample, PLATFORM_MAX_PATH, "vo/engineer_no01.mp3");
-				else strcopy(sample, PLATFORM_MAX_PATH, "vo/engineer_jeers02.mp3");
+					strcopy(sample, PLATFORM_MAX_PATH, "vo/engineer_no01.wav");
+				else strcopy(sample, PLATFORM_MAX_PATH, "vo/engineer_jeers02.wav");
 				return Plugin_Changed;
 			}
 			else return Plugin_Continue;
@@ -661,7 +653,7 @@ public Action DefaultBosses_OnVoice(const VSH2Player player, char sample[PLATFOR
 		case VSH2Boss_HHHjr: {
 			if( !strncmp(sample, "vo", 2, false) ) {
 				if( GetRandomInt(0, 30) <= 10 ) {
-					Format(sample, PLATFORM_MAX_PATH, "%s0%i.mp3", HHHLaught, GetRandomInt(1, 4));
+					Format(sample, PLATFORM_MAX_PATH, "%s0%i.wav", HHHLaught, GetRandomInt(1, 4));
 					return Plugin_Changed;
 				}
 				if( StrContains(sample, "halloween_boss") == -1 )

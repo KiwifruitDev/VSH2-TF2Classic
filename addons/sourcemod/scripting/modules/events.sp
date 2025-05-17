@@ -295,7 +295,9 @@ public Action RoundStart(Event event, const char[] name, bool dontBroadcast)
 		AcceptEntityInput(ent, "SetTeam");
 		AcceptEntityInput(ent, "skin");
 	}
+	PrecacheModel("models/props_buildings/collapsedbuilding02b.mdl");
 	VSHGameMode.SearchForItemPacks();
+	VSHGameMode.CreateStunTriggers();
 	g_vshgm.iHealthChecks = 0;
 	return Plugin_Continue;
 }
@@ -361,15 +363,7 @@ public Action RoundEnd(Event event, const char[] name, bool dontBroadcast)
 
 	g_vshgm.iRoundState = StateEnding;
 	g_vshgm.flMusicTime = 0.0;
-
-#if defined _tf2attributes_included
-	for( int i=MaxClients; i; --i ) {
-		if( !IsValidClient(i) )
-			continue;
-		if( g_vshgm.bTF2Attribs )
-			TF2Attrib_RemoveByDefIndex(i, 26);
-	}
-#endif
+	
 	StopBackGroundMusic();         /// in handler.sp
 	ShowPlayerScores();            /// In vsh2.sp
 	SetPawnTimer(CalcScores, 3.0); /// In vsh2.sp

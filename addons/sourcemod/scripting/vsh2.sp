@@ -6,7 +6,6 @@
 #include <vsh2>
 
 #undef REQUIRE_PLUGIN
-#tryinclude <tf2attributes>
 #tryinclude <goomba>
 #define REQUIRE_PLUGIN
 
@@ -178,6 +177,9 @@ enum struct VSH2Globals {
 	/// When making new properties, remember to base it off this StringMap
 	/// AND do NOT forget to initialize it in 'OnClientPutInServer'.
 	StringMap m_hPlayerFields[PLYR];
+
+	int m_iStunTriggers[2];
+	int m_iStunFilter;
 }
 
 VSH2Globals   g_vsh2;
@@ -250,7 +252,6 @@ public void OnPluginStart()
 	RegAdminCmd("sm_hale_select",    CommandBossSelect, ADMFLAG_VOTE, "hale_select <target> - Select a player to be next boss.");
 	RegAdminCmd("sm_ff2_select",     CommandBossSelect, ADMFLAG_VOTE, "ff2_select <target> - Select a player to be next boss.");
 	RegAdminCmd("sm_boss_select",    CommandBossSelect, ADMFLAG_VOTE, "boss_select <target> - Select a player to be next boss.");
-	RegAdminCmd("sm_healthbarcolor", ChangeHealthBarColor, ADMFLAG_GENERIC);
 
 	RegAdminCmd("sm_boss_force", ForceBossRealtime, ADMFLAG_VOTE, "boss_force <target> <bossID> - Force a player to the boss team as the specified boss. (Setup time only)");
 	RegAdminCmd("sm_hale_force", ForceBossRealtime, ADMFLAG_VOTE, "hale_force <target> <bossID> - Force a player to the boss team as the specified boss. (Setup time only)");
@@ -391,7 +392,6 @@ public void OnPluginStart()
 	g_vsh2.m_hCvars.BootStompDamage = CreateConVar("vsh2_mantreads_stomp_dmg", "1024.0", "damage done from mantreads-style stomp, value given will work depending on the value of 'vsh2_mantreads_stomp_logic'.", FCVAR_NONE, true, 0.0, true, 999999.0);
 
 	g_vshgm.bSteam      = LibraryExists("SteamTools");
-	g_vshgm.bTF2Attribs = LibraryExists("tf2attributes");
 
 	AutoExecConfig(true, "VSHv2");
 	HookEvent("player_death",               PlayerDeath, EventHookMode_Pre);
@@ -402,10 +402,6 @@ public void OnPluginStart()
 	HookEvent("post_inventory_application", Resupply);
 	HookEvent("object_deflected",           ObjectDeflected);
 	HookEvent("object_destroyed",           ObjectDestroyed, EventHookMode_Pre);
-
-	/// No longer functional.
-	//HookEvent("player_jarated",             PlayerJarated);
-	HookUserMessage(GetUserMessageId("PlayerJarated"), PlayerJarated);
 
 	HookEvent("rocket_jump",                OnExplosiveJump);
 	HookEvent("rocket_jump_landed",         OnExplosiveJump);
@@ -509,10 +505,8 @@ public Action CheckLateSpawn(int client, const char[] command, int argc)
 		&& TF2_GetPlayerClass(client)==TFClass_Unknown
 		&& (GetGameTime() - g_vshgm.flRoundStartTime) > g_vsh2.m_hCvars.LateSpawnDelay.FloatValue
 	) {
-		char str_tfclass[20]; GetCmdArg(1, str_tfclass, sizeof(str_tfclass));
-		TFClassType classtype = TF2_GetClass(str_tfclass);
 		CPrintToChat(client, "{olive}[VSH 2]{default} Late Spawn Blocked");
-		SetEntProp(client, Prop_Send, "m_iDesiredPlayerClass", view_as< int >(classtype));
+		SetEntProp(client, Prop_Send, "m_iDesiredPlayerClass", view_as< int >(TFClass_Scout));
 		return Plugin_Handled;
 	}
 	return Plugin_Continue;
@@ -546,9 +540,6 @@ public void OnLibraryAdded(const char[] name)
 	if( !strcmp(name, "SteamTools", false) )
 		g_vshgm.bSteam = true;
 
-	if( !strcmp(name, "tf2attributes", false) )
-		g_vshgm.bTF2Attribs = true;
-
 #if defined _updater_included
 	if( !strcmp(name, "updater") )
 		Updater_AddPlugin(UPDATE_URL);
@@ -559,9 +550,6 @@ public void OnLibraryRemoved(const char[] name)
 {
 	if( !strcmp(name, "SteamTools", false) )
 		g_vshgm.bSteam = false;
-
-	if( !strcmp(name, "tf2attributes", false) )
-		g_vshgm.bTF2Attribs = false;
 }
 
 /// UPDATER Stuff
@@ -595,7 +583,7 @@ enum struct CvarVals {
 	int mp_forceautoteam;
 	int tf_arena_first_blood;
 	int mp_forcecamera;
-	float tf_scout_hype_pep_max;
+	int tf2c_arena_drop_healthkit_on_death;
 }
 
 CvarVals g_oldcvar_vals;
@@ -615,20 +603,20 @@ public void OnConfigsExecuted()
 		ConVar cvar_mp_teams_unbalance_limit = FindConVar("mp_teams_unbalance_limit");
 		ConVar cvar_tf_arena_first_blood     = FindConVar("tf_arena_first_blood");
 		ConVar cvar_mp_forcecamera           = FindConVar("mp_forcecamera");
-		ConVar cvar_tf_scout_hype_pep_max    = FindConVar("tf_scout_hype_pep_max");
+		ConVar cvar_tf2c_arena_drop_healthkit_on_death = FindConVar("tf2c_arena_drop_healthkit_on_death");
 
 		g_oldcvar_vals.tf_arena_use_queue       = cvar_tf_arena_use_queue.IntValue;
 		g_oldcvar_vals.mp_teams_unbalance_limit = cvar_mp_teams_unbalance_limit.IntValue;
 		g_oldcvar_vals.tf_arena_first_blood     = cvar_tf_arena_first_blood.IntValue;
 		g_oldcvar_vals.mp_forcecamera           = cvar_mp_forcecamera.IntValue;
-		g_oldcvar_vals.tf_scout_hype_pep_max    = cvar_tf_scout_hype_pep_max.FloatValue;
+		g_oldcvar_vals.tf2c_arena_drop_healthkit_on_death = cvar_tf2c_arena_drop_healthkit_on_death.IntValue;
 
 		cvar_tf_arena_use_queue.IntValue       = 0;
 		cvar_mp_teams_unbalance_limit.IntValue = g_vsh2.m_hCvars.FirstRound.BoolValue ? 0 : 1;
 		cvar_mp_forcecamera.IntValue           = g_vsh2.m_hCvars.FirstRound.BoolValue ? 0 : 1;
 		cvar_tf_arena_first_blood.IntValue     = 0;
 		cvar_mp_forcecamera.IntValue           = 0;
-		cvar_tf_scout_hype_pep_max.FloatValue  = 100.0;
+		cvar_tf2c_arena_drop_healthkit_on_death.IntValue = 0;
 
 		g_vshgm.CheckDoors();
 		g_vshgm.CheckTeleToSpawn();
@@ -746,7 +734,6 @@ public void OnMapStart()
 	CreateTimer(0.1, Timer_PlayerThink, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	CreateTimer(1.0, MakeModelTimer, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 
-	g_vshgm.iHealthBar = VSHHealthBar();
 	g_vshgm.iRoundCount = 0;
 	g_vshgm.iRoundState = StateDisabled;
 	g_vshgm.hNextBoss = view_as< BaseBoss >(0);
@@ -767,7 +754,6 @@ public void OnMapEnd()
 	FindConVar("mp_forceautoteam").IntValue         = g_oldcvar_vals.mp_forceautoteam;
 	FindConVar("tf_arena_first_blood").IntValue     = g_oldcvar_vals.tf_arena_first_blood;
 	FindConVar("mp_forcecamera").IntValue           = g_oldcvar_vals.mp_forcecamera;
-	FindConVar("tf_scout_hype_pep_max").FloatValue  = g_oldcvar_vals.tf_scout_hype_pep_max;
 }
 
 public void _MakePlayerBoss(const int userid)
@@ -821,7 +807,6 @@ public Action Timer_PlayerThink(Handle hTimer)
 		return Plugin_Continue;
 	}
 
-	g_vshgm.UpdateBossHealth();
 	if( g_vshgm.flMusicTime <= GetGameTime() ) {
 		_MusicPlay();
 	}
@@ -959,6 +944,16 @@ public Action RemoveEnt(Handle timer, any entid)
 	int ent = EntRefToEntIndex(entid);
 	if( ent > 0 && IsValidEntity(ent) ) {
 		AcceptEntityInput(ent, "Kill");
+	}
+	return Plugin_Continue;
+}
+
+public Action TeleportEntAway(Handle timer, any ent)
+{
+	ent = EntRefToEntIndex(ent);
+	if( ent > 0 && IsValidEntity(ent) ) {
+		float away[3] = {-16300.0, -16300.0, -16300.0};
+		TeleportEntity(ent, away, NULL_VECTOR, NULL_VECTOR);
 	}
 	return Plugin_Continue;
 }
@@ -1113,8 +1108,7 @@ public void CalcScores()
 
 public Action Timer_DrawGame(Handle timer)
 {
-	if( g_vshgm.iHealthBar.iPercent < g_vsh2.m_hCvars.HealthPercentForLastGuy.IntValue
-		|| g_vshgm.iRoundState != StateRunning
+	if( g_vshgm.iRoundState != StateRunning
 		|| g_vshgm.iTimeLeft < 0 ) {
 		return Plugin_Stop;
 	}
@@ -1146,12 +1140,12 @@ public Action Timer_DrawGame(Handle timer)
 	}
 
 	switch( time ) {
-		case 60: EmitSoundToAll("vo/announcer_ends_60sec.mp3");
-		case 30: EmitSoundToAll("vo/announcer_ends_30sec.mp3");
-		case 10: EmitSoundToAll("vo/announcer_ends_10sec.mp3");
+		case 60: EmitSoundToAll("vo/announcer_ends_60sec.wav");
+		case 30: EmitSoundToAll("vo/announcer_ends_30sec.wav");
+		case 10: EmitSoundToAll("vo/announcer_ends_10sec.wav");
 		case 1, 2, 3, 4, 5: {
 			char sound[PLATFORM_MAX_PATH];
-			Format(sound, PLATFORM_MAX_PATH, "vo/announcer_ends_%isec.mp3", time);
+			Format(sound, PLATFORM_MAX_PATH, "vo/announcer_ends_%isec.wav", time);
 			EmitSoundToAll(sound);
 		}
 		/// Thx MasterOfTheXP
@@ -1356,11 +1350,9 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	/// VSH2 Fighter Methods
 	CreateNative("VSH2Player.ConvertToMinion",      Native_VSH2_ConvertToMinion);
 	CreateNative("VSH2Player.SpawnWeapon",          Native_VSH2_SpawnWep);
-	CreateNative("VSH2Player.GetWeaponSlotIndex",   Native_VSH2_GetWeaponSlotIndex);
 	CreateNative("VSH2Player.SetWepInvis",          Native_VSH2_SetWepInvis);
 	CreateNative("VSH2Player.SetOverlay",           Native_VSH2_SetOverlay);
 	CreateNative("VSH2Player.TeleToSpawn",          Native_VSH2_TeleToSpawn);
-	CreateNative("VSH2Player.IncreaseHeadCount",    Native_VSH2_IncreaseHeadCount);
 	CreateNative("VSH2Player.SpawnSmallHealthPack", Native_VSH2_SpawnSmallHealthPack);
 	CreateNative("VSH2Player.ForceTeamChange",      Native_VSH2_ForceTeamChange);
 	CreateNative("VSH2Player.ClimbWall",            Native_VSH2_ClimbWall);
@@ -1372,17 +1364,15 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("VSH2Player.GetHealTarget",        Native_VSH2_GetHealTarget);
 	CreateNative("VSH2Player.IsNearDispenser",      Native_VSH2_IsNearDispenser);
 	CreateNative("VSH2Player.IsInRange",            Native_VSH2_IsInRange);
-	CreateNative("VSH2Player.RemoveBack",           Native_VSH2_RemoveBack);
-	CreateNative("VSH2Player.FindBack",             Native_VSH2_FindBack);
 	CreateNative("VSH2Player.ShootRocket",          Native_VSH2_ShootRocket);
 	CreateNative("VSH2Player.Heal",                 Native_VSH2_Heal);
-	CreateNative("VSH2Player.AddTempAttrib",        Native_VSH2_AddTempAttrib);
 
 	/// VSH2 Boss Methods
 	CreateNative("VSH2Player.ConvertToBoss",        Native_VSH2_ConvertToBoss);
 	CreateNative("VSH2Player.GiveRage",             Native_VSH2_GiveRage);
 	CreateNative("VSH2Player.MakeBossAndSwitch",    Native_VSH2_MakeBossAndSwitch);
 	CreateNative("VSH2Player.DoGenericStun",        Native_VSH2_DoGenericStun);
+	CreateNative("VSH2Player.StunPlayer",           Native_VSH2_StunPlayer);
 	CreateNative("VSH2Player.StunPlayers",          Native_VSH2_StunPlayers);
 	CreateNative("VSH2Player.StunBuildings",        Native_VSH2_StunBuildings);
 	CreateNative("VSH2Player.RemoveAllItems",       Native_VSH2_RemoveAllItems);
@@ -1405,7 +1395,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("VSH2GameMode_CountBosses",        Native_VSH2GameMode_CountBosses);
 	CreateNative("VSH2GameMode_GetTotalBossHealth", Native_VSH2GameMode_GetTotalBossHealth);
 	CreateNative("VSH2GameMode_SearchForItemPacks", Native_VSH2GameMode_SearchForItemPacks);
-	CreateNative("VSH2GameMode_UpdateBossHealth",   Native_VSH2GameMode_UpdateBossHealth);
+	CreateNative("VSH2GameMode_CreateStunTriggers", Native_VSH2GameMode_CreateStunTriggers);
 	CreateNative("VSH2GameMode_GetBossType",        Native_VSH2GameMode_GetBossType);
 	CreateNative("VSH2GameMode_GetTotalRedPlayers", Native_VSH2GameMode_GetTotalRedPlayers);
 	CreateNative("VSH2GameMode_GetHUDHandle",       Native_VSH2GameMode_GetHUDHandle);
@@ -1421,10 +1411,6 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	MarkNativeAsOptional("Steam_SetGameDescription");
 #endif
 
-#if defined _tf2attributes_included
-	MarkNativeAsOptional("TF2Attrib_SetByDefIndex");
-	MarkNativeAsOptional("TF2Attrib_RemoveByDefIndex");
-#endif
 	RegPluginLibrary("VSH2");
 	return APLRes_Success;
 }
@@ -1711,19 +1697,9 @@ public int Native_VSH2_ConvertToMinion(Handle plugin, int numParams)
 public int Native_VSH2_SpawnWep(Handle plugin, int numParams)
 {
 	BaseBoss player = GetNativeCell(1);
-	char classname[64]; GetNativeString(2, classname, 64);
-	int itemindex = GetNativeCell(3);
-	int level = GetNativeCell(4);
-	int quality = GetNativeCell(5);
-	char attributes[128]; GetNativeString(6, attributes, 128);
-	return player.SpawnWeapon(classname, itemindex, level, quality, attributes);
-}
-
-public int Native_VSH2_GetWeaponSlotIndex(Handle plugin, int numParams)
-{
-	BaseBoss player = GetNativeCell(1);
-	int slot = GetNativeCell(2);
-	return player.GetWeaponSlotIndex(slot);
+	int itemindex = GetNativeCell(2);
+	player.SpawnWeapon(itemindex);
+	return 0;
 }
 
 public int Native_VSH2_SetWepInvis(Handle plugin, int numParams)
@@ -1748,15 +1724,6 @@ public int Native_VSH2_TeleToSpawn(Handle plugin, int numParams)
 	int team = GetNativeCell(2);
 
 	return player.TeleToSpawn(team);
-}
-
-public int Native_VSH2_IncreaseHeadCount(Handle plugin, int numParams)
-{
-	BaseBoss player = GetNativeCell(1);
-	bool addhealth = GetNativeCell(2);
-	int head_count = GetNativeCell(3);
-	player.IncreaseHeadCount(addhealth, head_count);
-	return 0;
 }
 
 public int Native_VSH2_SpawnSmallHealthPack(Handle plugin, int numParams)
@@ -1839,25 +1806,6 @@ public any Native_VSH2_IsInRange(Handle plugin, int numParams)
 	return player.IsInRange(GetNativeCell(2), distance, GetNativeCell(4));
 }
 
-public int Native_VSH2_RemoveBack(Handle plugin, int numParams)
-{
-	BaseBoss player = GetNativeCell(1);
-	int length = GetNativeCell(3);
-	int[] data = new int[length];
-	GetNativeArray(2, data, length);
-	player.RemoveBack(data, length);
-	return 0;
-}
-
-public int Native_VSH2_FindBack(Handle plugin, int numParams)
-{
-	BaseBoss player = GetNativeCell(1);
-	int length = GetNativeCell(3);
-	int[] data = new int[length];
-	GetNativeArray(2, data, length);
-	return player.FindBack(data, length);
-}
-
 public int Native_VSH2_ShootRocket(Handle plugin, int numParams)
 {
 	BaseBoss player = GetNativeCell(1);
@@ -1880,15 +1828,6 @@ public int Native_VSH2_Heal(Handle plugin, int numParams)
 	int overheal_limit = GetNativeCell(5);
 	player.Heal(health, hud, hp_override, overheal_limit);
 	return 0;
-}
-
-public any Native_VSH2_AddTempAttrib(Handle plugin, int numParams)
-{
-	BaseBoss player = GetNativeCell(1);
-	int attrib = GetNativeCell(2);
-	float val = GetNativeCell(3);
-	float dur = GetNativeCell(4);
-	return player.AddTempAttrib(attrib, val, dur);
 }
 
 
@@ -1921,6 +1860,15 @@ public int Native_VSH2_DoGenericStun(Handle plugin, int numParams)
 	BaseBoss player = GetNativeCell(1);
 	float rage_radius = GetNativeCell(2);
 	player.DoGenericStun(rage_radius);
+	return 0;
+}
+
+public int Native_VSH2_StunPlayer(Handle plugin, int numParams)
+{
+	BaseBoss player = GetNativeCell(1);
+	int target = GetNativeCell(2);
+	float stun_time = GetNativeCell(3);
+	player.StunPlayer(target, stun_time);
 	return 0;
 }
 
@@ -2062,9 +2010,9 @@ public int Native_VSH2GameMode_SearchForItemPacks(Handle plugin, int numParams)
 	VSHGameMode.SearchForItemPacks();
 	return 0;
 }
-public int Native_VSH2GameMode_UpdateBossHealth(Handle plugin, int numParams)
+public int Native_VSH2GameMode_CreateStunTriggers(Handle plugin, int numParams)
 {
-	g_vshgm.UpdateBossHealth();
+	VSHGameMode.CreateStunTriggers();
 	return 0;
 }
 public int Native_VSH2GameMode_GetBossType(Handle plugin, int numParams)

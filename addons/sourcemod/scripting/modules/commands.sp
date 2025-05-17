@@ -151,18 +151,6 @@ public int MenuHandler_PickBossSpecial(Menu menu, MenuAction action, int client,
 	return 0;
 }
 
-
-public Action ChangeHealthBarColor(int client, int args)
-{
-	if( g_vsh2.m_hCvars.Enabled.BoolValue ) {
-		char number[4]; GetCmdArg( 1, number, sizeof(number) );
-		int type = StringToInt(number);
-		g_vshgm.iHealthBar.iState = type;
-		PrintToChat(client, "iHealthBar.iState = %i", g_vshgm.iHealthBar.iState);
-	}
-	return Plugin_Handled;
-}
-
 public Action Command_GetHPCmd(int client, int args)
 {
 	if( !g_vsh2.m_hCvars.Enabled.BoolValue ) {

@@ -30,83 +30,83 @@ static const char BunnyMaterials[][] = {
 
 /// Easter Bunny voicelines
 char BunnyWin[][] = {
-	"vo/demoman_gibberish01.mp3",
-	"vo/demoman_gibberish12.mp3",
-	"vo/demoman_cheers02.mp3",
-	"vo/demoman_cheers03.mp3",
-	"vo/demoman_cheers06.mp3",
-	"vo/demoman_cheers07.mp3",
-	"vo/demoman_cheers08.mp3",
-	"vo/taunts/demoman_taunts12.mp3"
+	"vo/demoman_gibberish01.wav",
+	"vo/demoman_gibberish12.wav",
+	"vo/demoman_cheers02.wav",
+	"vo/demoman_cheers03.wav",
+	"vo/demoman_cheers06.wav",
+	"vo/demoman_cheers07.wav",
+	"vo/demoman_cheers08.wav",
+	"vo/taunts/demoman_taunts12.wav"
 };
 
 char BunnyJump[][] = {
-	"vo/demoman_gibberish07.mp3",
-	"vo/demoman_gibberish08.mp3",
-	"vo/demoman_laughshort01.mp3",
-	"vo/demoman_positivevocalization04.mp3"
+	"vo/demoman_gibberish07.wav",
+	"vo/demoman_gibberish08.wav",
+	"vo/demoman_laughshort01.wav",
+	"vo/demoman_positivevocalization04.wav"
 };
 
 char BunnyRage[][] = {
-	"vo/demoman_positivevocalization03.mp3",
-	"vo/demoman_dominationscout05.mp3",
-	"vo/demoman_cheers02.mp3"
+	"vo/demoman_positivevocalization03.wav",
+	"vo/demoman_dominationscout05.wav",
+	"vo/demoman_cheers02.wav"
 };
 
 char BunnyFail[][] = {
-	"vo/demoman_gibberish04.mp3",
-	"vo/demoman_gibberish10.mp3",
-	"vo/demoman_jeers03.mp3",
-	"vo/demoman_jeers06.mp3",
-	"vo/demoman_jeers07.mp3",
-	"vo/demoman_jeers08.mp3"
+	"vo/demoman_gibberish04.wav",
+	"vo/demoman_gibberish10.wav",
+	"vo/demoman_jeers03.wav",
+	"vo/demoman_jeers06.wav",
+	"vo/demoman_jeers07.wav",
+	"vo/demoman_jeers08.wav"
 };
 
 char BunnyKill[][] = {
-	"vo/demoman_gibberish09.mp3",
-	"vo/demoman_cheers02.mp3",
-	"vo/demoman_cheers07.mp3",
-	"vo/demoman_positivevocalization03.mp3"
+	"vo/demoman_gibberish09.wav",
+	"vo/demoman_cheers02.wav",
+	"vo/demoman_cheers07.wav",
+	"vo/demoman_positivevocalization03.wav"
 };
 
 char BunnySpree[][] = {
-	"vo/demoman_gibberish05.mp3",
-	"vo/demoman_gibberish06.mp3",
-	"vo/demoman_gibberish09.mp3",
-	"vo/demoman_gibberish11.mp3",
-	"vo/demoman_gibberish13.mp3",
-	"vo/demoman_autodejectedtie01.mp3"
+	"vo/demoman_gibberish05.wav",
+	"vo/demoman_gibberish06.wav",
+	"vo/demoman_gibberish09.wav",
+	"vo/demoman_gibberish11.wav",
+	"vo/demoman_gibberish13.wav",
+	"vo/demoman_autodejectedtie01.wav"
 };
 
 char BunnyLast[][] = {
-	"vo/taunts/demoman_taunts05.mp3",
-	"vo/taunts/demoman_taunts04.mp3",
-	"vo/demoman_specialcompleted07.mp3"
+	"vo/taunts/demoman_taunts05.wav",
+	"vo/taunts/demoman_taunts04.wav",
+	"vo/demoman_specialcompleted07.wav"
 };
 
 char BunnyPain[][] = {
-	"vo/demoman_sf12_badmagic01.mp3",
-	"vo/demoman_sf12_badmagic07.mp3",
-	"vo/demoman_sf12_badmagic10.mp3"
+	"vo/demoman_sf12_badmagic01.wav",
+	"vo/demoman_sf12_badmagic07.wav",
+	"vo/demoman_sf12_badmagic10.wav"
 };
 
 char BunnyStart[][] = {
-	"vo/demoman_gibberish03.mp3",
-	"vo/demoman_gibberish11.mp3"
+	"vo/demoman_gibberish03.wav",
+	"vo/demoman_gibberish11.wav"
 };
 
 char BunnyRandomVoice[][] = {
-	"vo/demoman_positivevocalization03.mp3",
-	"vo/demoman_jeers08.mp3",
-	"vo/demoman_gibberish03.mp3",
-	"vo/demoman_cheers07.mp3",
-	"vo/demoman_sf12_badmagic01.mp3",
-	"vo/burp02.mp3",
-	"vo/burp03.mp3",
-	"vo/burp04.mp3",
-	"vo/burp05.mp3",
-	"vo/burp06.mp3",
-	"vo/burp07.mp3"
+	"vo/demoman_positivevocalization03.wav",
+	"vo/demoman_jeers08.wav",
+	"vo/demoman_gibberish03.wav",
+	"vo/demoman_cheers07.wav",
+	"vo/demoman_sf12_badmagic01.wav",
+	"vo/burp02.wav",
+	"vo/burp03.wav",
+	"vo/burp04.wav",
+	"vo/burp05.wav",
+	"vo/burp06.wav",
+	"vo/burp07.wav"
 };
 
 
@@ -164,25 +164,15 @@ methodmap CBunny < BaseBoss {
 	public void Equip() {
 		this.SetName("The Easter Bunny");
 		this.RemoveAllItems();
-		char attribs[128];
-		Format(attribs, sizeof(attribs), "68 ; 2.0; 2 ; 3.0; 259 ; 1.0; 326 ; 1.3; 252 ; 0.6");
-		int SaxtonWeapon = this.SpawnWeapon("tf_weapon_bottle", 609, 100, 5, attribs);
-		SetEntPropEnt(this.index, Prop_Send, "m_hActiveWeapon", SaxtonWeapon);
+		this.SpawnWeapon(BossWeapon_EasterBunny_Bottle);
 	}
 	public void RageAbility() {
 		TF2_AddCondition(this.index, view_as< TFCond >(42), 4.0);
-		if( !GetEntProp(this.index, Prop_Send, "m_bIsReadyToHighFive")
-			&& !IsValidEntity(GetEntPropEnt(this.index, Prop_Send, "m_hHighFivePartner")) )
-		{
-			TF2_RemoveCondition(this.index, TFCond_Taunting);
-			this.SetModel();
-		}
+		TF2_RemoveCondition(this.index, TFCond_Taunting);
+		this.SetModel();
 		
 		TF2_RemoveWeaponSlot(this.index, TFWeaponSlot_Primary);
-		int weapon = this.SpawnWeapon("tf_weapon_grenadelauncher", 19, 100, 5, "2; 1.5; 6; 0.1; 411; 150.0; 413; 1.0; 37; 0.0; 280; 17; 477; 1.0; 467; 1.0; 181; 2.0; 252; 0.7");
-		SetEntPropEnt(this.index, Prop_Send, "m_hActiveWeapon", weapon);
-		SetEntProp(weapon, Prop_Send, "m_iClip1", 50);
-		SetWeaponAmmo(weapon, 0);
+		this.SpawnWeapon(BossWeapon_EasterBunny_GrenadeLauncher);
 		
 		this.DoGenericStun(VAGRAGEDIST);
 		char rage_snd[PLATFORM_MAX_PATH];
@@ -301,8 +291,10 @@ stock void SpawnManyAmmoPacks(const int client, const char[] model, int skin=0, 
 		DispatchSpawn(ent);
 		TeleportEntity(ent, pos, ang, vel);
 		SetEntProp(ent, Prop_Data, "m_iHealth", 900);
+		/*
 		int offs = GetEntSendPropOffs(ent, "m_vecInitialVelocity", true);
 		SetEntData(ent, offs-4, 1, _, true);
+		*/
 	}
 }
 

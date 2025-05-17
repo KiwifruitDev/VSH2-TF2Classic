@@ -90,18 +90,9 @@ stock void ForceTeamWin(const int team)
 	SetVariantInt(team);
 	AcceptEntityInput(entity, "SetWinner");
 }
-stock int GetItemIndex(const int item)
-{
-	return( IsValidEntity(item) ) ? GetEntProp(item, Prop_Send, "m_iItemDefinitionIndex") : -1;
-}
 stock int GetItemQuality(const int item)
 {
 	return( IsValidEntity(item) ) ? GetEntProp(item, Prop_Send, "m_iEntityQuality") : -1;
-}
-stock int GetIndexOfWeaponSlot(const int client, const int slot)
-{
-	int weapon = GetPlayerWeaponSlot(client, slot);
-	return GetItemIndex(weapon);
 }
 stock bool IsInRange(const int entity, const int target, const float dist, bool trace = false)
 {
@@ -262,8 +253,6 @@ stock bool IsValidClient(const int client, bool replaycheck=true)
 {
 	if( client <= 0 || client > MaxClients || !IsClientInGame(client) )
 		return false;
-	else if( GetEntProp(client, Prop_Send, "m_bIsCoaching") )
-		return false;
 	else if( replaycheck && (IsClientSourceTV(client) || IsClientReplay(client)) )
 		return false;
 	else if( TF2_GetPlayerClass(client)==TFClass_Unknown )
@@ -376,19 +365,6 @@ stock int GetLivingPlayers(const int team)
 	return AlivePlayers;
 }
 
-stock void IncrementHeadCount(const int client, bool addhealth = true, int addheads = 1, int heal_amount=15)
-{
-	/// Apply this condition to Demomen to give them their glowing eye effect.
-	if( (TF2_GetPlayerClass(client) == TFClass_DemoMan) && !TF2_IsPlayerInCondition(client, TFCond_DemoBuff) )
-		TF2_AddCondition(client, TFCond_DemoBuff, TFCondDuration_Infinite);
-	int decapitations = GetEntProp(client, Prop_Send, "m_iDecapitations");
-	SetEntProp(client, Prop_Send, "m_iDecapitations", decapitations + addheads);
-	if( addhealth )
-		HealPlayer(client, heal_amount * addheads, true);
-
-	/// recalc their speed
-	TF2_AddCondition(client, TFCond_SpeedBuffAlly, 0.01);
-}
 stock void SpawnSmallHealthPackAt(const int client, int ownerteam = 0)
 {
 	if( !IsValidClient(client) || !IsPlayerAlive(client) )
@@ -641,21 +617,6 @@ stock int GetTeamPlayerCount(const int team)
 			count++;
 	return count;
 }
-stock int GetClientCloakIndex(const int client)
-{
-	if( !IsValidClient(client) )
-		return -1;
-
-	int wep = GetPlayerWeaponSlot(client, 4);
-	if( !IsValidEntity(wep) )
-		return -1;
-
-	char classname[32];
-	GetEntityClassname(wep, classname, sizeof(classname));
-	if( !strncmp(classname, "tf_wea", 6, false) )
-		return GetItemIndex(wep);
-	return -1;
-}
 stock int GetSlotFromWeapon(const int iClient, const int iWeapon)
 {
 	for( int i; i<5; i++ )
@@ -664,106 +625,7 @@ stock int GetSlotFromWeapon(const int iClient, const int iWeapon)
 
 	return -1;
 }
-stock bool RemoveDemoShield(int iClient) /// Taken from VSH1
-{
-	int numwearables = TF2_GetNumWearables(iClient);
-	for( int i=numwearables-1; i>=0; --i ) {
-		int wearable = TF2_GetWearable(iClient, i);
-		if( wearable && !GetEntProp(wearable, Prop_Send, "m_bDisguiseWearable") ) {
-			char cls[32];
-			if( GetEntityClassname(wearable, cls, sizeof(cls)), !strncmp(cls, "tf_wearable_demo", 16, false) ) {
-				TF2_RemoveWearable(iClient, wearable);
-				return true; /// Returns true if Shield was removed...
-			}
-		}
-	}
-	return false; /// ...and returns False if one wasn't found.
-}
 
-stock bool RemoveRazorBack(int iClient)
-{
-	int numwearables = TF2_GetNumWearables(iClient);
-	for( int i=numwearables-1; i>=0; --i ) {
-		int wearable = TF2_GetWearable(iClient, i);
-		if( wearable && !GetEntProp(wearable, Prop_Send, "m_bDisguiseWearable") ) {
-			char cls[32];
-			if( GetEntityClassname(wearable, cls, sizeof(cls)), !strncmp(cls, "tf_wearable_razo", 16, false) ) {
-				TF2_RemoveWearable(iClient, wearable);
-				return true; /// Returns true if Shield was removed...
-			}
-		}
-	}
-	return false; /// ...and returns False if one wasn't found.
-}
-
-stock int GetDemoShield(int client)
-{
-	int numwearables = TF2_GetNumWearables(client);
-	for( int i=numwearables-1; i>=0; --i ) {
-		int wearable = TF2_GetWearable(client, i);
-		if( wearable && HasEntProp(wearable, Prop_Send, "m_bDisguiseWearable") && !GetEntProp(wearable, Prop_Send, "m_bDisguiseWearable") ) {
-			char cls[32];
-			if( GetEntityClassname(wearable, cls, sizeof(cls)), !strncmp(cls, "tf_wearable_demo", 16, false) ) {
-				return wearable;
-			}
-		}
-	}
-	return -1;
-}
-
-stock int GetRazorBack(int client)
-{
-	int numwearables = TF2_GetNumWearables(client);
-	for( int i=numwearables-1; i>=0; --i ) {
-		int wearable = TF2_GetWearable(client, i);
-		if( wearable && !GetEntProp(wearable, Prop_Send, "m_bDisguiseWearable") ) {
-			char cls[32];
-			if( GetEntityClassname(wearable, cls, sizeof(cls)), !strncmp(cls, "tf_wearable_razo", 16, false) ) {
-				return wearable;
-			}
-		}
-	}
-	return -1;
-}
-
-stock void RemovePlayerBack(int client, int[] indices, int len)
-{
-	if( len <= 0 )
-		return;
-
-	int numwearables = TF2_GetNumWearables(client);
-	for( int i=numwearables-1; i>=0; --i ) {
-		int wearable = TF2_GetWearable(client, i);
-		if( wearable && !GetEntProp(wearable, Prop_Send, "m_bDisguiseWearable") ) {
-			int idx = GetItemIndex(wearable);
-			for( int u; u<len; u++ ) {
-				if( idx==indices[u] ) {
-					TF2_RemoveWearable(client, wearable);
-					break;
-				}
-			}
-		}
-	}
-}
-stock int FindPlayerBack(int client, int[] indices, int len)
-{
-	if( len <= 0 )
-		return -1;
-
-	int numwearables = TF2_GetNumWearables(client);
-	for( int i=numwearables-1; i>=0; --i ) {
-		int wearable = TF2_GetWearable(client, i);
-		if( wearable && !GetEntProp(wearable, Prop_Send, "m_bDisguiseWearable") ) {
-			int idx = GetItemIndex(wearable);
-			for( int u; u<len; u++ ) {
-				if( idx==indices[u] ) {
-					return wearable;
-				}
-			}
-		}
-	}
-	return -1;
-}
 stock int FindSentry(const int client)
 {
 	int i = -1;
@@ -790,23 +652,6 @@ stock void OverNineThousand()
 	EmitSoundToAll("saxton_hale/9000.wav");
 	EmitSoundToAll("saxton_hale/9000.wav");
 }
-public void _NoHonorBound(const int userid)
-{
-	int client = GetClientOfUserId(userid);
-	if( IsValidClient(client) && IsPlayerAlive(client) ) {
-		int weapon = GetPlayerWeaponSlot(client, TFWeaponSlot_Melee);
-		int index = GetItemIndex(weapon);
-		int active = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
-		char classname[32];
-		if( IsValidEntity(active) )
-			GetEdictClassname(active, classname, sizeof(classname));
-		if( index == 357 && active == weapon && !strcmp(classname, "tf_weapon_katana", false) ) {
-			SetEntProp(weapon, Prop_Send, "m_bIsBloody", 1);
-			if( GetEntProp(client, Prop_Send, "m_iKillCountSinceLastDeploy") < 1 )
-				SetEntProp(client, Prop_Send, "m_iKillCountSinceLastDeploy", 1);
-		}
-	}
-}
 stock int GetMaxAmmo(const int client, const int slot)
 {
 	if( !IsValidClient(client) )
@@ -831,9 +676,7 @@ public void _StopTickle(const int userid)
 	int client = GetClientOfUserId(userid);
 	if( !IsValidClient(client) || !IsPlayerAlive(client) )
 		return;
-
-	if( !GetEntProp(client, Prop_Send, "m_bIsReadyToHighFive") && !IsValidEntity(GetEntPropEnt(client, Prop_Send, "m_hHighFivePartner")) )
-		TF2_RemoveCondition(client, TFCond_Taunting);
+	TF2_RemoveCondition(client, TFCond_Taunting);
 }
 stock bool MapHasMusic(bool forceRecalc = false)	/// Does this even work?
 {
@@ -1118,6 +961,7 @@ stock char[] TF2_GetPlayerClassname(const int client, bool capitalize = false)
 		case TFClass_Heavy: s = "heavy";
 		case TFClass_Spy: s = "spy";
 		case TFClass_Engineer: s = "engineer";
+		case TFClass_Civilian: s = "civilian";
 	}
 
 	if( capitalize )
@@ -1213,21 +1057,4 @@ stock void HealPlayer(const int client, const int health, bool on_hud=false, boo
 			}
 		}
 	}
-}
-
-stock int TF2_GetNumWearables(int client)
-{
-	/// 3552 linux
-	/// 3532 windows
-	int offset = FindSendPropInfo("CTFPlayer", "m_flMaxspeed") - 20 + 12;
-	return GetEntData(client, offset);
-}
-
-stock int TF2_GetWearable(int client, int wearableidx)
-{
-	/// 3540 linux
-	/// 3520 windows
-	int offset = FindSendPropInfo("CTFPlayer", "m_flMaxspeed") - 20;
-	Address m_hMyWearables = view_as< Address >(LoadFromAddress(GetEntityAddress(client) + view_as< Address >(offset), NumberType_Int32));
-	return LoadFromAddress(m_hMyWearables + view_as< Address >(4 * wearableidx), NumberType_Int32) & 0xFFF;
 }

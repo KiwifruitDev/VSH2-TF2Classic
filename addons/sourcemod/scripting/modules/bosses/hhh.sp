@@ -2,12 +2,12 @@
 
 /// HHH voicelines
 #define HHHLaught			"vo/halloween_boss/knight_laugh"
-#define HHHRage				"vo/halloween_boss/knight_attack01.mp3"
-#define HHHRage2			"vo/halloween_boss/knight_alert.mp3"
+#define HHHRage				"vo/halloween_boss/knight_attack01"
+#define HHHRage2			"vo/halloween_boss/knight_alert"
 #define HHHAttack			"vo/halloween_boss/knight_attack"
 #define HHHPain				"vo/halloween_boss/knight_pain"
 
-#define HHHTheme			"ui/holiday/gamestartup_halloween.mp3"
+#define HHHTheme			"freak_fortress_2/hhh/hhh_bgm.mp3"
 
 #define HALEHHH_TELEPORTCHARGETIME     2
 #define HALEHHH_TELEPORTCHARGE         (25.0 * HALEHHH_TELEPORTCHARGETIME)
@@ -75,9 +75,8 @@ methodmap CHHHJr < BaseBoss {
 						SetEntPropVector(this.index, Prop_Send, "m_vecMaxs", collisionvec);
 						SetEntProp(this.index, Prop_Send, "m_bDucked", 1);
 						SetEntityFlags(this.index, flags|FL_DUCKING);
-						SetPawnTimer(StunHHH, 0.2, this.userid, GetClientUserId(target));
 					}
-					else TF2_StunPlayer(this.index, 2.0, 0.0, TF_STUNFLAGS_GHOSTSCARE|TF_STUNFLAG_NOSOUNDOREFFECT, target);
+					this.StunPlayer(target, 2.0);
 					
 					TeleportEntity(this.index, pos, NULL_VECTOR, NULL_VECTOR);
 					SetEntProp(this.index, Prop_Send, "m_bGlowEnabled", 0);
@@ -138,22 +137,14 @@ methodmap CHHHJr < BaseBoss {
 	public void Equip() {
 		this.SetName("The Horseless Headless Horsemann Jr.");
 		this.RemoveAllItems();
-		char attribs[128];
-		
-		Format(attribs, sizeof(attribs), "68; 2.0; 2; 3.1; 259; 1.0; 252; 0.6; 551; 1");
-		int SaxtonWeapon = this.SpawnWeapon("tf_weapon_sword", 266, 100, 5, attribs);
-		SetEntPropEnt(this.index, Prop_Send, "m_hActiveWeapon", SaxtonWeapon);
+		this.SpawnWeapon(BossWeapon_HorselessHeadlessHorsemannJr_Kukri);
 		this.flCharge = g_vsh2.m_hCvars.HHHTeleCooldown.FloatValue * 0.9091;
 	}
 	public void RageAbility()
 	{
 		TF2_AddCondition(this.index, view_as< TFCond >(42), 4.0);
-		if( !GetEntProp(this.index, Prop_Send, "m_bIsReadyToHighFive")
-			&& !IsValidEntity(GetEntPropEnt(this.index, Prop_Send, "m_hHighFivePartner")) )
-		{
-			TF2_RemoveCondition(this.index, TFCond_Taunting);
-			this.SetModel();
-		}
+		TF2_RemoveCondition(this.index, TFCond_Taunting);
+		this.SetModel();
 		this.DoGenericStun(HALERAGEDIST);
 		this.PlayVoiceClip(HHHRage2, VSH2_VOICE_RAGE);
 	}
@@ -208,11 +199,11 @@ public void AddHHHToDownloads()
 	PrepareModel(HHHModel);
 	for( int i=1; i <= 4; i++ ) {
 		char s[PLATFORM_MAX_PATH];
-		Format(s, PLATFORM_MAX_PATH, "%s0%i.mp3", HHHLaught, i);
+		Format(s, PLATFORM_MAX_PATH, "%s0%i", HHHLaught, i);
 		PrecacheSound(s, true);
-		Format(s, PLATFORM_MAX_PATH, "%s0%i.mp3", HHHAttack, i);
+		Format(s, PLATFORM_MAX_PATH, "%s0%i", HHHAttack, i);
 		PrecacheSound(s, true);
-		Format(s, PLATFORM_MAX_PATH, "%s0%i.mp3", HHHPain, i);
+		Format(s, PLATFORM_MAX_PATH, "%s0%i", HHHPain, i);
 		PrecacheSound(s, true);
 	}
 	PrecacheSound(HHHRage, true);
@@ -220,11 +211,11 @@ public void AddHHHToDownloads()
 	PrecacheSound(HHHTheme, true);
 	PrecacheSound("ui/halloween_boss_summoned_fx.wav", true);
 	PrecacheSound("ui/halloween_boss_defeated_fx.wav", true);
-	PrecacheSound("vo/halloween_boss/knight_pain01.mp3", true);
-	PrecacheSound("vo/halloween_boss/knight_pain02.mp3", true);
-	PrecacheSound("vo/halloween_boss/knight_pain03.mp3", true);
-	PrecacheSound("vo/halloween_boss/knight_death01.mp3", true);
-	PrecacheSound("vo/halloween_boss/knight_death02.mp3", true);
+	PrecacheSound("vo/halloween_boss/knight_pain01", true);
+	PrecacheSound("vo/halloween_boss/knight_pain02", true);
+	PrecacheSound("vo/halloween_boss/knight_pain03", true);
+	PrecacheSound("vo/halloween_boss/knight_death01", true);
+	PrecacheSound("vo/halloween_boss/knight_death02", true);
 	PrecacheSound("misc/halloween/spell_teleport.wav", true);
 }
 
@@ -238,15 +229,4 @@ public void HHHTeleCollisionReset(const int userid)
 {
 	int client = GetClientOfUserId(userid);
 	SetEntProp(client, Prop_Send, "m_CollisionGroup", 5); /// Fix HHH's clipping.
-}
-public void StunHHH(const int userid, const int targetid)
-{
-	int client = GetClientOfUserId(userid);
-	if( !IsValidClient(client) || !IsPlayerAlive(client) )
-		return;
-	
-	int target = GetClientOfUserId(targetid);
-	if( !IsValidClient(target) || !IsPlayerAlive(target) )
-		target = 0;
-	TF2_StunPlayer(client, 2.0, 0.0, TF_STUNFLAGS_GHOSTSCARE|TF_STUNFLAG_NOSOUNDOREFFECT, target);
 }

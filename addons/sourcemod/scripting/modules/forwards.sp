@@ -36,7 +36,6 @@ void InitializeForwards()
 		g_hForwards[i][OnPlayerHurt] = new PrivateForward( ET_Event, Param_Cell, Param_Cell, Param_Cell );
 		g_hForwards[i][OnBossMenu] = new PrivateForward( ET_Ignore, Param_CellByRef, Param_Cell );
 		g_hForwards[i][OnScoreTally] = new PrivateForward( ET_Event, Param_Cell, Param_CellByRef, Param_CellByRef );
-		g_hForwards[i][OnItemOverride] = new PrivateForward( ET_Hook, Param_Cell, Param_String, Param_Cell, Param_CellByRef );
 
 		/// OnBossDealDamage Specific Forwards.
 		g_hForwards[i][OnBossDealDamage_OnStomp] = new PrivateForward( ET_Hook, Param_Cell, Param_CellByRef, Param_CellByRef, Param_FloatByRef, Param_CellByRef, Param_CellByRef, Param_Array, Param_Array, Param_Cell );
@@ -566,21 +565,6 @@ Action Call_OnScoreTally(const BaseBoss player, int& points_earned, int& queue_e
 		Call_PushCell(player);
 		Call_PushCellRef(points_earned);
 		Call_PushCellRef(queue_earned);
-		Call_Finish(act[i]);
-		if( act[i] > Plugin_Changed )
-			return act[i];
-	}
-	return act[0] > act[1] ? act[0] : act[1];
-}
-Action Call_OnItemOverride(const BaseBoss player, const char[] classname, int itemdef, Handle& item)
-{
-	Action act[2];
-	for( int i; i<sizeof(g_hForwards); i++ ) {
-		Call_StartForward(g_hForwards[i][OnItemOverride]);
-		Call_PushCell(player);
-		Call_PushString(classname);
-		Call_PushCell(itemdef);
-		Call_PushCellRef(item);
 		Call_Finish(act[i]);
 		if( act[i] > Plugin_Changed )
 			return act[i];

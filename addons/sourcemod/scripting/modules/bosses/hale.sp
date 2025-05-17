@@ -1,8 +1,8 @@
 /// defines
 /// models
-// #define HaleModel		"models/player/saxton_hale/saxton_hale.mdl"
-// #define HaleModelPrefix		"models/player/saxton_hale/saxton_hale"
-#define HaleModel				"models/player/saxton_hale_jungle_inferno/saxton_hale.mdl"
+//#define HaleModel		"models/player/saxton_hale/saxton_hale.mdl"
+//#define HaleModelPrefix		"models/player/saxton_hale/saxton_hale"
+#define HaleModel				"models/saxton_hale_jungle_inferno/saxton_hale.mdl"
 
 /// materials
 static const char HaleMatsV2[][] = {
@@ -156,19 +156,12 @@ methodmap CHale < BaseBoss {
 	public void Equip() {
 		this.SetName("Saxton Hale");
 		this.RemoveAllItems();
-		char attribs[128];
-		Format(attribs, sizeof(attribs), "68; 2.0; 2; 3.1; 259; 1.0; 252; 0.6; 214; %d", GetRandomInt(999, 9999));
-		int SaxtonWeapon = this.SpawnWeapon("tf_weapon_shovel", 5, 100, 5, attribs);
-		SetEntPropEnt(this.index, Prop_Send, "m_hActiveWeapon", SaxtonWeapon);
+		this.SpawnWeapon(BossWeapon_SaxtonHale_Fists);
 	}
 	public void RageAbility() {
 		TF2_AddCondition(this.index, view_as< TFCond >(42), 4.0);
-		if( !GetEntProp(this.index, Prop_Send, "m_bIsReadyToHighFive")
-			&& !IsValidEntity(GetEntPropEnt(this.index, Prop_Send, "m_hHighFivePartner")) )
-		{
-			TF2_RemoveCondition(this.index, TFCond_Taunting);
-			this.SetModel(); /// should reset Hale's animation
-		}
+		TF2_RemoveCondition(this.index, TFCond_Taunting);
+		this.SetModel(); /// should reset Hale's animation
 		this.DoGenericStun(HALERAGEDIST);
 		char rage_snd[PLATFORM_MAX_PATH];
 		Format(rage_snd, PLATFORM_MAX_PATH, "%s%i.wav", HaleRageSound, GetRandomInt(1, 4));
@@ -204,6 +197,7 @@ methodmap CHale < BaseBoss {
 						strcopy(kill_snd, PLATFORM_MAX_PATH, HaleKillEngie2);
 					else Format(kill_snd, PLATFORM_MAX_PATH, "%s%i.wav", HaleKillEngie132, GetRandomInt(1, 2));
 				}
+				case TFClass_Civilian: strcopy(kill_snd, PLATFORM_MAX_PATH, HaleKillPyro132);
 			}
 			if( kill_snd[0] != '\0' )
 				this.PlayVoiceClip(kill_snd, VSH2_VOICE_SPREE);

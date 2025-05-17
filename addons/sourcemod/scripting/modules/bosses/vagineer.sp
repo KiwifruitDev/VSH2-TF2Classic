@@ -5,8 +5,8 @@
 #define VagineerModelPrefix	"models/player/saxton_hale/vagineer_v134"
 */
 
-#define VagineerModel		"models/player/saxton_hale/vagineer_v150.mdl"
-// #define VagineerModelPrefix	"models/player/saxton_hale/vagineer_v150"
+#define VagineerModel		"models/saxton_hale/vagineer_v151c.mdl"
+// #define VagineerModelPrefix	"models/saxton_hale/vagineer_v151c"
 
 
 /// Vagineer voicelines
@@ -86,20 +86,12 @@ methodmap CVagineer < BaseBoss {
 	public void Equip() {
 		this.SetName("The Vagineer");
 		this.RemoveAllItems();
-		char attribs[128];
-		
-		Format(attribs, sizeof(attribs), "68; 2.0; 2; 3.1; 259; 1.0; 436; 1.0");
-		int SaxtonWeapon = this.SpawnWeapon("tf_weapon_wrench", 169, 100, 5, attribs);
-		SetEntPropEnt(this.index, Prop_Send, "m_hActiveWeapon", SaxtonWeapon);
+		this.SpawnWeapon(BossWeapon_Vagineer_Wrench);
 	}
 	public void RageAbility() {
 		TF2_AddCondition(this.index, view_as< TFCond >(42), 4.0);
-		if( !GetEntProp(this.index, Prop_Send, "m_bIsReadyToHighFive")
-			&& !IsValidEntity(GetEntPropEnt(this.index, Prop_Send, "m_hHighFivePartner")) )
-		{
-			TF2_RemoveCondition(this.index, TFCond_Taunting);
-			this.SetModel();
-		}
+		TF2_RemoveCondition(this.index, TFCond_Taunting);
+		this.SetModel();
 		TF2_AddCondition(this.index, TFCond_Ubercharged, g_vsh2.m_hCvars.VagineerUberTime.FloatValue);
 		this.DoGenericStun(VAGRAGEDIST);
 		char rage_snd[PLATFORM_MAX_PATH];
@@ -133,7 +125,7 @@ methodmap CVagineer < BaseBoss {
 	}
 	
 	public void Stabbed() {
-		this.PlayVoiceClip("vo/engineer_positivevocalization01.mp3", VSH2_VOICE_STABBED);
+		this.PlayVoiceClip("vo/engineer_positivevocalization01.wav", VSH2_VOICE_STABBED);
 	}
 	
 	public void Help() {
@@ -193,7 +185,7 @@ public void AddVagToDownloads()
 		PrepareSound(s);
 	}
 	
-	PrecacheSound("vo/engineer_positivevocalization01.mp3", true);
+	PrecacheSound("vo/engineer_positivevocalization01.wav", true);
 }
 
 public void AddVagToMenu(Menu& menu)

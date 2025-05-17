@@ -3,19 +3,8 @@
 #include <sourcemod>
 #include <sdktools>
 #include <sdkhooks>
-#include <tf2_stocks>
+#include <tf2c>
 #include <vsh2>
-
-#undef REQUIRE_PLUGIN
-#tryinclude <tf2attributes>
-#define REQUIRE_PLUGIN
-
-
-#if defined _tf2attributes_included
-public void TF2AttribsRemove(const int iEntity) {
-	TF2Attrib_RemoveAll(iEntity);
-}
-#endif
 
 public void RemoveWepFromSlot(const int client, const int wepslot) {
 	TF2_RemoveWeaponSlot(client, wepslot);
@@ -247,26 +236,10 @@ public void PlagueDoc_OnBossEquipped(const VSH2Player player) {
 	player.SetName(boss_name_str);
 	player.RemoveAllItems();
 	
-	ConfigMap melee_wep = plague_doc.cfg.GetSection("boss.melee");
-	if( melee_wep==null ) {
-		return;
-	}
+	int index;
+	plague_doc.cfg.GetInt("boss.melee", index);
 	
-	int attribs_len = melee_wep.GetSize("attribs");
-	char[] attribs_str = new char[attribs_len];
-	melee_wep.Get("attribs", attribs_str, attribs_len);
-	
-	int classname_len = melee_wep.GetSize("classname");
-	char[] classname_str = new char[classname_len];
-	melee_wep.Get("classname", classname_str, classname_len);
-	
-	int index, level, quality;
-	melee_wep.GetInt("index",   index);
-	melee_wep.GetInt("level",   level);
-	melee_wep.GetInt("quality", quality);
-	
-	int wep = player.SpawnWeapon(classname_str, index, level, quality, attribs_str);
-	SetEntPropEnt(player.index, Prop_Send, "m_hActiveWeapon", wep);
+	player.SpawnWeapon(index);
 }
 
 public void PlagueDoc_OnBossInitialized(const VSH2Player player) {
@@ -283,30 +256,11 @@ public void PlagueDoc_OnMinionInitialized(const VSH2Player player, const VSH2Pla
 	int client = player.index;
 	TF2_SetPlayerClass(client, TFClass_Scout, _, false);
 	player.RemoveAllItems();
-#if defined _tf2attributes_included
-	if( VSH2GameMode.GetPropInt("bTF2Attribs") )
-		TF2Attrib_RemoveAll(client);
-#endif
-	ConfigMap melee_wep = plague_doc.cfg.GetSection("boss.minion melee");
-	if( melee_wep==null ) {
-		return;
-	}
 	
-	int attribs_len = melee_wep.GetSize("attribs");
-	char[] attribs_str = new char[attribs_len];
-	melee_wep.Get("attribs", attribs_str, attribs_len);
+	int index;
+	plague_doc.cfg.GetInt("boss.minion melee", index);
+	player.SpawnWeapon(index);
 	
-	int classname_len = melee_wep.GetSize("classname");
-	char[] classname_str = new char[classname_len];
-	melee_wep.Get("classname", classname_str, classname_len);
-	
-	int index, level, quality;
-	melee_wep.GetInt("index",   index);
-	melee_wep.GetInt("level",   level);
-	melee_wep.GetInt("quality", quality);
-	int weapon = player.SpawnWeapon(classname_str, index, level, quality, attribs_str);
-	
-	SetEntPropEnt(client, Prop_Send, "m_hActiveWeapon", weapon);
 	TF2_AddCondition(client, TFCond_Ubercharged, plague_doc.minion_uber_time.FloatValue);
 	SetEntityHealth(client, 200);
 	
@@ -414,30 +368,6 @@ public void PlagueDoc_OnBossMedicCall(const VSH2Player rager) {
 		case 0: { attribute = 2;   value = 2.0;   } /// Extra damage
 		case 1: { attribute = 26;  value = 100.0; } /// Extra health
 		case 2: { attribute = 107; value = 2.0;   } /// Extra speed
-	}
-	
-	VSH2Player[] minions = new VSH2Player[MaxClients];
-	int minion_count = VSH2GameMode.GetMinions(minions, false, rager);
-	for( int i; i<minion_count; i++ ) {
-		if( minions[i].hOwnerBoss != rager )
-			continue;
-		
-		int m = minions[i].index;
-	#if defined _tf2attributes_included
-		bool tf2attribs_enabled = VSH2GameMode.GetPropAny("bTF2Attribs");
-		if( tf2attribs_enabled ) {
-			TF2Attrib_SetByDefIndex(m, attribute, value);
-			SetPawnTimer(TF2AttribsRemove, rage_time, m);
-		} else {
-			char pdapower[32]; Format(pdapower, sizeof(pdapower), "%i ; %f", attribute, value);
-			int wep = minions[i].SpawnWeapon("tf_weapon_builder", 28, 5, 10, pdapower);
-			SetPawnTimer(RemoveWepFromSlot, rage_time, m, GetSlotFromWeapon(m, wep));
-		}
-	#else
-		char pdapower[32]; Format(pdapower, sizeof(pdapower), "%i ; %f", attribute, value);
-		int wep = minions[i].SpawnWeapon("tf_weapon_builder", 28, 5, 10, pdapower);
-		SetPawnTimer(RemoveWepFromSlot, rage_time, m, GetSlotFromWeapon(m, wep));
-	#endif
 	}
 	rager.SetPropFloat("flRAGE", 0.0);
 	ConfigMap rage_sect = plague_doc.cfg.GetSection("boss.sounds.rage");

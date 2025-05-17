@@ -3,8 +3,7 @@
 #endif
 #define _vsh2_included
 
-#include <tf2_stocks>
-#include <tf2items_stocks>
+#include <tf2c>
 #include <cfgmap>
 
 
@@ -100,6 +99,18 @@ enum { /** VSH2 Resource Types */
 	MaxResourceTypes
 };
 
+enum { /** Boss Weapons */
+	BossWeapon_SaxtonHale_Fists = 9990,
+	BossWeapon_EasterBunny_Bottle,
+	BossWeapon_EasterBunny_GrenadeLauncher,
+	BossWeapon_ChristianBrutalSniper_Kukri,
+	BossWeapon_ChristianBrutalSniper_Huntsman,
+	BossWeapon_HorselessHeadlessHorsemannJr_Kukri,
+	BossWeapon_Vagineer_Wrench,
+	BossWeapon_PlagueDoctor_Bonesaw,
+	BossWeapon_PlagueDoctor_Bat,
+	BossWeapon_BuffCivilian_DerbyCane
+};
 
 methodmap VSH2Player {
 	/** [ C O N S T R U C T O R ]
@@ -224,12 +235,10 @@ methodmap VSH2Player {
 	}
 
 	public native void ConvertToMinion(const float spawntime);
-	public native int  SpawnWeapon(char[] name, const int index, const int level, const int qual, char[] att);
-	public native int  GetWeaponSlotIndex(const int slot);
+	public native void SpawnWeapon(const int index);
 	public native void SetWepInvis(const int alpha);
 	public native void SetOverlay(const char[] strOverlay);
 	public native bool TeleToSpawn(int team=0);
-	public native void IncreaseHeadCount(bool addhealth=true, int head_count=1);
 	public native void SpawnSmallHealthPack(int ownerteam=0);
 	public native void ForceTeamChange(const int team);
 	public native bool ClimbWall(const int weapon, const float upwardVel, const float health, const bool attackdelay);
@@ -273,10 +282,6 @@ methodmap VSH2Player {
 		return count;
 	}
 
-	public native void RemoveBack(int[] indices, const int len);
-
-	public native int  FindBack(int[] indices, const int len);
-
 	public native int  ShootRocket(bool bCrit=false, float vPosition[3], float vAngles[3], const float flSpeed, const float dmg, const char[] model, bool arc=false);
 
 	public native void Heal(const int health, bool on_hud=false, bool overridehp=false, int overheal_limit=0);
@@ -291,8 +296,6 @@ methodmap VSH2Player {
 			return TF2_GetPlayerClass(this.index);
 		}
 	}
-
-	public native bool AddTempAttrib(const int attrib, const float val, const float dur = -1.0);
 
 
 	/// Boss oriented methods & properties.
@@ -458,7 +461,6 @@ enum { /// VSH2HookType
 	OnPrepRedTeam,
 	OnPlayerHurt,
 	OnScoreTally,
-	OnItemOverride,
 	OnBossDealDamage_OnStomp,
 	OnBossDealDamage_OnHitDefBuff,
 	OnBossDealDamage_OnHitCritMmmph,
@@ -601,7 +603,6 @@ typeset VSH2HookCB {
 	 * OnBossDealDamage_OnHitMedic -> hitting a medic.
 	 * OnBossDealDamage_OnHitDeadRinger -> hitting a spy that has Dead Ringer.
 	 * OnBossDealDamage_OnHitCloakedSpy -> hitting a spy that is cloaked.
-	 * OnBossDealDamage_OnHitShield -> hitting a player equipped with demoknight shield or razorback.
 	 *
 	 * OnBossTakeDamage_OnStabbed -> boss got backstabbed!
 	 * OnBossTakeDamage_OnTelefragged -> boss got telefragged
@@ -676,12 +677,6 @@ typeset VSH2HookCB {
 	/// OnScoreTally
 	function Action (const VSH2Player player, int& points_earned, int& queue_earned);
 	function void   (const VSH2Player player, int& points_earned, int& queue_earned);
-
-	/// OnItemOverride
-	function Action (const VSH2Player player, const char[] classname, int itemdef, Handle& item);
-	function void   (const VSH2Player player, const char[] classname, int itemdef, Handle& item);
-	function Action (const VSH2Player player, const char[] classname, int itemdef, TF2Item& item);
-	function void   (const VSH2Player player, const char[] classname, int itemdef, TF2Item& item);
 
 	/// OnBossDoRageStun
 	function Action (const VSH2Player player, float& distance);
@@ -804,47 +799,6 @@ native ConfigMap VSH2_GetConfigMap();
  * Game Mode Oriented stuff.
  */
 
-methodmap VSHHealthBar {
-	public VSHHealthBar() {
-		int healthbar = FindEntityByClassname(-1, "monster_resource");
-		if( healthbar == -1 ) {
-			healthbar = CreateEntityByName("monster_resource");
-			if( healthbar != -1 ) {
-				DispatchSpawn(healthbar);
-			}
-		}
-		return view_as< VSHHealthBar >(healthbar);
-	}
-
-	property int entity {
-		public get() {
-			return view_as< int >(this);
-		}
-	}
-
-	property int iState {
-		public get() {
-			return GetEntProp(this.entity, Prop_Send, "m_iBossState");
-		}
-		public set(int val) {
-			SetEntProp(this.entity, Prop_Send, "m_iBossState", val);
-		}
-	}
-	property int iPercent {
-		public get() {
-			return GetEntProp(this.entity, Prop_Send, "m_iBossHealthPercentageByte");
-		}
-		public set(int val) {
-			SetEntProp(this.entity, Prop_Send, "m_iBossHealthPercentageByte", IntClamp(val, 255, 0));
-		}
-	}
-
-	public void SetHealthPercent(int total_health, int total_max_health) {
-		this.iPercent = RoundFloat(float(total_health) / float(total_max_health) * 255);
-	}
-};
-
-
 native any  VSH2GameMode_GetProperty(const char prop_name[64]);
 native void VSH2GameMode_SetProperty(const char prop_name[64], any value);
 
@@ -860,7 +814,6 @@ native void VSH2GameMode_SetProperty(const char prop_name[64], any value);
  * int iCaptures
  *
  * bool bSteam
- * bool bTF2Attribs
  * bool bPointReady
  * bool bMedieval
  * bool bDoors
@@ -915,7 +868,7 @@ native int VSH2GameMode_GetBossesByType(VSH2Player[] bosses, const int type, boo
 native int VSH2GameMode_GetQueue(VSH2Player[] players);
 
 native void VSH2GameMode_SearchForItemPacks();
-native void VSH2GameMode_UpdateBossHealth();
+native void VSH2GameMode_CreateStunTriggers();
 native void VSH2GameMode_GetBossType();
 
 native Handle VSH2GameMode_GetHUDHandle(int HUDType=PlayerHUD);
@@ -964,12 +917,6 @@ methodmap VSH2GameMode {
 		VSH2GameMode_SetProperty(prop_name, value);
 	}
 
-	property VSHHealthBar hHealthBar {
-		public get() {
-			return VSH2GameMode.GetPropAny("iHealthBar");
-		}
-	}
-
 	public static VSH2Player GetRandomBoss(const bool is_alive) {
 		return VSH2GameMode_GetRandomBoss(is_alive);
 	}
@@ -1002,8 +949,8 @@ methodmap VSH2GameMode {
 	public static void SearchForItemPacks() {
 		VSH2GameMode_SearchForItemPacks();
 	}
-	public static void UpdateBossHealth() {
-		VSH2GameMode_UpdateBossHealth();
+	public static void CreateStunTriggers() {
+		VSH2GameMode_CreateStunTriggers();
 	}
 	public static void SelectBossType() {
 		VSH2GameMode_GetBossType();
@@ -1050,9 +997,12 @@ stock void PrecacheSoundList(const char[][] file_list, int size)
 
 stock void PrecacheScriptList(const char[][] file_list, int size)
 {
+	// FIXME: uhhh???
+	/*
 	for( int i; i<size; i++ ) {
 		PrecacheScriptSound(file_list[i]);
 	}
+	*/
 }
 
 /// For single custom materials, omit file extensions as it prepares VMT + VTF
@@ -1317,11 +1267,9 @@ public void __pl_vsh2_SetNTVOptional()
 
 	MarkNativeAsOptional("VSH2Player.ConvertToMinion");
 	MarkNativeAsOptional("VSH2Player.SpawnWeapon");
-	MarkNativeAsOptional("VSH2Player.GetWeaponSlotIndex");
 	MarkNativeAsOptional("VSH2Player.SetWepInvis");
 	MarkNativeAsOptional("VSH2Player.SetOverlay");
 	MarkNativeAsOptional("VSH2Player.TeleToSpawn");
-	MarkNativeAsOptional("VSH2Player.IncreaseHeadCount");
 	MarkNativeAsOptional("VSH2Player.SpawnSmallHealthPack");
 	MarkNativeAsOptional("VSH2Player.ForceTeamChange");
 	MarkNativeAsOptional("VSH2Player.ClimbWall");
@@ -1334,16 +1282,14 @@ public void __pl_vsh2_SetNTVOptional()
 	MarkNativeAsOptional("VSH2Player.GetHealTarget");
 	MarkNativeAsOptional("VSH2Player.IsNearDispenser");
 	MarkNativeAsOptional("VSH2Player.IsInRange");
-	MarkNativeAsOptional("VSH2Player.RemoveBack");
-	MarkNativeAsOptional("VSH2Player.FindBack");
 	MarkNativeAsOptional("VSH2Player.ShootRocket");
 	MarkNativeAsOptional("VSH2Player.Heal");
-	MarkNativeAsOptional("VSH2Player.AddTempAttrib");
 
 	MarkNativeAsOptional("VSH2Player.ConvertToBoss");
 	MarkNativeAsOptional("VSH2Player.GiveRage");
 	MarkNativeAsOptional("VSH2Player.MakeBossAndSwitch");
 	MarkNativeAsOptional("VSH2Player.DoGenericStun");
+	MarkNativeAsOptional("VSH2Player.StunPlayer");
 	MarkNativeAsOptional("VSH2Player.StunPlayers");
 	MarkNativeAsOptional("VSH2Player.StunBuildings");
 	MarkNativeAsOptional("VSH2Player.RemoveAllItems");
@@ -1378,7 +1324,7 @@ public void __pl_vsh2_SetNTVOptional()
 	MarkNativeAsOptional("VSH2GameMode_CountBosses");
 	MarkNativeAsOptional("VSH2GameMode_GetTotalBossHealth");
 	MarkNativeAsOptional("VSH2GameMode_SearchForItemPacks");
-	MarkNativeAsOptional("VSH2GameMode_UpdateBossHealth");
+	MarkNativeAsOptional("VSH2GameMode_CreateStunTriggers");
 	MarkNativeAsOptional("VSH2GameMode_GetBossType");
 	MarkNativeAsOptional("VSH2GameMode_GetTotalRedPlayers");
 	MarkNativeAsOptional("VSH2GameMode_GetHUDHandle");

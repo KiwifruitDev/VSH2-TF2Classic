@@ -1,5 +1,6 @@
 #include <sourcemod>
 #include <morecolors>
+#include <sdktools>
 #include <vsh2>
 
 #pragma semicolon    1
@@ -419,12 +420,6 @@ public Action fwdOnScoreTally(const VSH2Player player, int& points_earned, int& 
 	PrintToChatAll("fwdOnScoreTally:: %N: points - %i, queue - %i", player.index, points_earned, queue_earned);
 }
 
-public Action fwdOnItemOverride(const VSH2Player player, const char[] classname, int itemdef, TF2Item& item)
-{
-	PrintToChat(player.index, "%s - %i", classname, itemdef);
-	return Plugin_Continue;
-}
-
 public void fwdOnBossSuperJump(const VSH2Player player)
 {
 	PrintToChat(player.index, "OnBossSuperJump:: %N", player.index);
@@ -653,9 +648,6 @@ public void LoadVSH2Hooks() {
 	
 	if( !VSH2_HookEx(OnScoreTally, fwdOnScoreTally) )
 		LogError("Error Hooking OnScoreTally forward for VSH2 Test plugin.");
-	
-	if( !VSH2_HookEx(OnItemOverride, fwdOnItemOverride) )
-		LogError("Error Hooking OnItemOverride forward for VSH2 Test plugin.");
 	
 	if( !VSH2_HookEx(OnBossDealDamage_OnStomp, fwdOnBossDealDamage_OnStomp) )
 		LogError("Error Hooking OnBossDealDamage_OnStomp forward for VSH2 Test plugin.");

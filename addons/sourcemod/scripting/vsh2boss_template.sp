@@ -3,12 +3,8 @@
 #include <sourcemod>
 #include <sdktools>
 #include <sdkhooks>
-#include <tf2_stocks>
+#include <tf2c>
 #include <vsh2>
-
-#undef REQUIRE_PLUGIN
-#tryinclude <tf2attributes>
-#define REQUIRE_PLUGIN
 
 
 public Plugin myinfo = {
@@ -236,26 +232,11 @@ public void Template_OnBossEquipped(const VSH2Player player) {
 	player.SetName(name);
 	
 	player.RemoveAllItems();
-	ConfigMap melee_wep = template_boss.cfg.GetSection("boss.melee");
-	if( melee_wep==null ) {
-		return;
-	}
 	
-	int attribs_len = melee_wep.GetSize("attribs");
-	char[] attribs_str = new char[attribs_len];
-	melee_wep.Get("attribs", attribs_str, attribs_len);
+	int index;
+	template_boss.cfg.GetInt("boss.melee", index);
 	
-	int classname_len = melee_wep.GetSize("classname");
-	char[] classname_str = new char[classname_len];
-	melee_wep.Get("classname", classname_str, classname_len);
-	
-	int index, level, quality;
-	melee_wep.GetInt("index",   index);
-	melee_wep.GetInt("level",   level);
-	melee_wep.GetInt("quality", quality);
-	
-	int wep = player.SpawnWeapon(classname_str, index, level, quality, attribs_str);
-	SetEntPropEnt(player.index, Prop_Send, "m_hActiveWeapon", wep);
+	player.SpawnWeapon(index);
 }
 
 public void Template_OnBossInitialized(const VSH2Player player) {

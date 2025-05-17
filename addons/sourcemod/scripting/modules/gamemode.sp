@@ -30,15 +30,6 @@ methodmap VSHGameMode < StringMap {
 			this.SetValue("iPrevSpecial", val);
 		}
 	}
-	property VSHHealthBar iHealthBar { /// in vsh2.inc
-		public get() {
-			VSHHealthBar i; this.GetValue("iHealthBar", i);
-			return i;
-		}
-		public set(const VSHHealthBar val) {
-			this.SetValue("iHealthBar", val);
-		}
-	}
 	property int iTotalMaxHealth {
 		public get() {
 			int i; this.GetValue("iTotalMaxHealth", i);
@@ -92,15 +83,6 @@ methodmap VSHGameMode < StringMap {
 		}
 		public set(const bool val) {
 			this.SetValue("bSteam", val);
-		}
-	}
-	property bool bTF2Attribs {
-		public get() {
-			bool i; this.GetValue("bTF2Attribs", i);
-			return i;
-		}
-		public set(const bool val) {
-			this.SetValue("bTF2Attribs", val);
 		}
 	}
 	property bool bPointReady {
@@ -188,7 +170,6 @@ methodmap VSHGameMode < StringMap {
 		this.iRoundState = 0;
 		this.iSpecial = -1;
 		this.iPrevSpecial = -1;
-		this.iHealthBar = view_as< VSHHealthBar >(0);
 		this.iTotalMaxHealth = 0;
 		this.iTimeLeft = 0;
 		this.iRoundCount = 0;
@@ -371,23 +352,71 @@ methodmap VSHGameMode < StringMap {
 			);
 		}
 	}
-	public void UpdateBossHealth() {
-		int totalHealth, bosscount;
-		for( int i=MaxClients; i; --i ) {
-			/// don't count dead bosses
-			if( !IsValidClient(i) || !IsPlayerAlive(i) ) {
-				continue;
-			}
-
-			BaseBoss boss = BaseBoss(i);
-			if( !boss.bIsBoss ) {
-				continue;
-			}
-			bosscount++;
-			totalHealth += boss.iHealth;
+	public static void CreateStunTriggers()
+	{
+		// Create red team filter
+		int filter = g_vsh2.m_iStunFilter;
+		if(filter > 0 && IsValidEntity(filter)) {
+			AcceptEntityInput(filter, "Kill");
 		}
-		if( bosscount > 0 ) {
-			this.iHealthBar.SetHealthPercent(totalHealth, this.iTotalMaxHealth);
+		g_vsh2.m_iStunFilter = -1;
+		filter = CreateEntityByName("filter_activator_tfteam");
+		if (filter != -1)
+		{
+			DispatchKeyValue(filter, "targetname", "_vsh_stun_filter");
+			DispatchKeyValue(filter, "Negated", "1");
+			DispatchKeyValue(filter, "TeamNum", "3");
+			LogMessage("[VSH 2] Created filter_activator_tfteam for stun triggers");
+			g_vsh2.m_iStunFilter = filter;
+		}
+		DispatchSpawn(filter);
+		ActivateEntity(filter);
+		// For all maxplayers, add a trigger_stun
+		float pos[3] = {-16300.0, -16300.0, -16300.0};
+		//float pos[3] = {-1290.5, -464.0, 101.0};
+		for( int i = 0; i < 2; ++i ) {
+			int ent = g_vsh2.m_iStunTriggers[i];
+			if(ent > 0 && IsValidEntity(ent)) {
+				AcceptEntityInput(ent, "Kill");
+			}
+			g_vsh2.m_iStunTriggers[i] = -1;
+		}
+		for( int i = 0; i < 2; ++i ) {
+			int trigger = CreateEntityByName("trigger_stun");
+			if (trigger != -1)
+			{
+				char name[64];
+				Format(name, sizeof(name), "_vsh_trigger_stun_%d", i);
+				DispatchKeyValue(trigger, "targetname", name);
+				//DispatchKeyValueInt(trigger, "StartDisabled", 0);
+				DispatchKeyValueFloat(trigger, "move_speed_reduction", 0.5);
+				DispatchKeyValueFloat(trigger, "stun_duration", 5.0);
+				DispatchKeyValueInt(trigger, "stun_effects", 1);
+				DispatchKeyValueInt(trigger, "stun_type", 2);
+				DispatchKeyValueInt(trigger, "spawnflags", 1);
+				if( i == 0 ) {
+					DispatchKeyValue(trigger, "filtername", "_vsh_stun_filter");
+				}
+				g_vsh2.m_iStunTriggers[i] = trigger;
+			}
+			DispatchSpawn(trigger);
+			ActivateEntity(trigger);
+			TeleportEntity(trigger, pos, NULL_VECTOR, NULL_VECTOR);
+			SetEntityModel(trigger, "models/props_buildings/collapsedbuilding02b.mdl");
+			float mins[3] = {-32.0, -32.0, -32.0};
+			float maxs[3] = {32.0, 32.0, 32.0};
+			if( i == 0 ) {
+				mins[0] = -1000.0;
+				maxs[0] = 1000.0;
+			}
+			SetEntPropVector(trigger, Prop_Send, "m_vecMins", mins);
+			SetEntPropVector(trigger, Prop_Send, "m_vecMaxs", maxs);
+			SetEntProp(trigger, Prop_Send, "m_nSolidType", 2);
+			int effects = GetEntProp(trigger, Prop_Send, "m_fEffects");
+			effects |= 32;
+			SetEntProp(trigger, Prop_Send, "m_fEffects", effects);
+			//SetEdictFlags(trigger, FL_EDICT_DONTSEND);
+			LogMessage("[VSH 2] Created trigger_stun %d", i);
 		}
 	}
 	public void GetBossType()
